@@ -1,5 +1,12 @@
+ffmpeg
+pydub
+librosa
+numpy
+scipy
 pydub
 ffmpeg-python
 openai-whisper
 pandas
 numpy
+pytest
+pytest-cov
