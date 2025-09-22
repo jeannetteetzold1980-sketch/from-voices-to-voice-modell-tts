@@ -31,6 +31,8 @@ def transcribe_segment(segment_path, model_name="base"):
     model = whisper.load_model(model_name)
     result = model.transcribe(segment_path)
     return result.get('text', '')
+from pydub import AudioSegment, silence
+
 def segment_audio(wav_path, min_silence_len=500, silence_thresh=-40):
     """
     Segmentiert eine WAV-Datei anhand von Sprachpausen.
@@ -38,7 +40,7 @@ def segment_audio(wav_path, min_silence_len=500, silence_thresh=-40):
     """
     audio = AudioSegment.from_wav(wav_path)
     segments = []
-    chunks = AudioSegment.split_on_silence(
+    chunks = silence.split_on_silence(
         audio,
         min_silence_len=min_silence_len,
         silence_thresh=silence_thresh
