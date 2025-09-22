@@ -24,6 +24,8 @@ def test_convert_to_wav(mock_audio_segment):
     mock_audio.export.assert_called_once_with(output_path, format="wav")
     assert result == output_path
 
+import numpy as np
+
 def test_get_audio_quality():
     # This is a placeholder test, as the function is not implemented yet.
     # It just checks if the function returns a dictionary with the expected keys.

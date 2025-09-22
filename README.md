@@ -75,4 +75,18 @@ voice_001,2,segment_02.wav,"Noch ein Segment.",3.2,7.1,3.9,
 - Beschreibe im README, wie das Image gebaut (`docker build -t whatsapp-voice-app .`) und gestartet (`docker run -v /lokaler/pfad:/app/results whatsapp-voice-app`) wird
 - Damit gewährleisten Sie, dass die Software plattformunabhängig auf jedem System mit Docker lauffähig ist
 
+**Hinweis zum Whisper-Modell:**
+Das Whisper-Modell ("base") wird beim Docker-Build automatisch heruntergeladen und in das Image integriert. Dadurch ist beim ersten Start des Containers keine Internetverbindung mehr nötig und die Transkription funktioniert direkt offline.
+
+**Docker-Build und Nutzung:**
+1. Image bauen:
+  ```bash
+  docker build -t whatsapp-voice-app .
+  ```
+2. Container starten (mit Ergebnis-Ordner als Volume):
+  ```bash
+  docker run -v /lokaler/pfad:/app/results whatsapp-voice-app /app/input /app/results
+  ```
+  `/app/input` sollte die Audiodateien enthalten, `/app/results` ist der Ausgabeordner.
+
 Mit dieser Anleitung sollten auch technisch wenig versierte Anwender die beschriebene Software Schritt für Schritt umsetzen können.

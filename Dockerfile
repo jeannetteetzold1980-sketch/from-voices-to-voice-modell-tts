@@ -10,4 +10,8 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
+
+# Whisper-Modell vorab laden (base)
+RUN python -c "import whisper; whisper.load_model('base')"
+
 CMD ["python", "main.py"]
