@@ -1,0 +1,5 @@
+pydub
+ffmpeg-python
+openai-whisper
+pandas
+numpy
