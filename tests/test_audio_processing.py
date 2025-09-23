@@ -31,14 +31,85 @@ def dummy_wav_file(tmp_path):
     AudioSegment.silent(duration=1000).export(file_path, format="wav")
     return file_path
 
-def test_get_audio_quality(dummy_wav_file):
+@patch('audio_processing.librosa.load')
+def test_get_audio_quality_librosa_load_error(mock_librosa_load, dummy_wav_file):
+    mock_librosa_load.side_effect = Exception("Test load error")
     quality = get_audio_quality(str(dummy_wav_file))
-    assert "snr" in quality
-    assert "clipping" in quality
-    assert "dynamik" in quality
-    assert "frequenzanalyse" in quality
-    assert "stille" in quality
-    assert "error" in quality
+    assert "Fehler beim Laden der Audiodatei: Test load error" in quality['error']
+
+@patch('audio_processing.librosa.load')
+@patch('audio_processing.np.mean')
+@patch('audio_processing.np.var')
+def test_get_audio_quality_low_snr_and_silent_audio(mock_np_var, mock_np_mean, mock_librosa_load, dummy_wav_file):
+    # Simulate a silent audio file
+    mock_librosa_load.return_value = (np.zeros(44100), 22050) # Longer silent audio
+    mock_np_mean.return_value = 0.0
+    mock_np_var.return_value = 0.0 # This will cause noise_power to be 0
+
+    quality = get_audio_quality(str(dummy_wav_file))
+    assert "SNR nicht berechenbar" in quality['error']
+    assert "Dynamik nicht berechenbar" in quality['error']
+    assert quality['snr'] is None
+    assert quality['dynamik'] is None
+
+@patch('audio_processing.librosa.load')
+def test_get_audio_quality_low_snr(mock_librosa_load, dummy_wav_file):
+    # Simulate audio with low SNR (e.g., signal_power / noise_power < 1)
+    y = np.random.rand(44100) * 0.1 # Low signal
+    noise = np.random.rand(44100) * 0.5 # High noise
+    mock_librosa_load.return_value = (y + noise, 22050)
+    quality = get_audio_quality(str(dummy_wav_file))
+    assert "SNR zu niedrig" in quality['error']
+
+@patch('audio_processing.librosa.load')
+def test_get_audio_quality_clipping(mock_librosa_load, dummy_wav_file):
+    # Simulate audio with clipping
+    y = np.array([0.5, 0.99, 1.0, 0.8]) # Max value >= 0.99
+    mock_librosa_load.return_value = (y, 22050)
+    quality = get_audio_quality(str(dummy_wav_file))
+    assert quality['clipping'] == True
+    assert "Clipping erkannt" in quality['error']
+
+@patch('audio_processing.librosa.load')
+def test_get_audio_quality_low_dynamic_range(mock_librosa_load, dummy_wav_file):
+    # Simulate audio with low dynamic range (e.g., highly compressed)
+    y = np.linspace(0.1, 0.2, 44100) # Small difference between min and max
+    mock_librosa_load.return_value = (y, 22050)
+    quality = get_audio_quality(str(dummy_wav_file))
+    assert "Dynamikbereich kritisch" in quality['error']
+
+@patch('audio_processing.librosa.load')
+@patch('audio_processing.librosa.stft')
+@patch('audio_processing.librosa.fft_frequencies')
+def test_get_audio_quality_frequency_issues(mock_fft_frequencies, mock_stft, mock_librosa_load, dummy_wav_file):
+    # Simulate audio with frequency losses (e.g., only low frequencies)
+    sr = 44100
+    y = np.sin(2 * np.pi * 100 * np.arange(sr * 5) / sr) # 5 seconds of 100 Hz sine wave
+    mock_librosa_load.return_value = (y, sr)
+    
+    # Mock STFT to return a spectrum where high frequencies have very low power
+    n_fft = 2048 # Default for librosa.stft
+    freqs_mock = np.linspace(0, sr / 2, n_fft // 2 + 1)
+    mock_fft_frequencies.return_value = freqs_mock
+
+    # Create a mock STFT output where high frequencies are near zero
+    S_mock = np.zeros((n_fft // 2 + 1, 100)) # 100 frames
+    # Set low frequencies to have some power
+    S_mock[freqs_mock < 300, :] = 1.0
+    mock_stft.return_value = S_mock
+    
+    quality = get_audio_quality(str(dummy_wav_file))
+    assert "Frequenzverluste/-verzerrungen" in quality['error']
+
+@patch('audio_processing.librosa.load')
+def test_get_audio_quality_high_silence_ratio(mock_librosa_load, dummy_wav_file):
+    # Simulate audio with high silence ratio
+    y = np.zeros(44100) # 1 second of silence
+    y[100:110] = 0.5 # A small burst of sound
+    mock_librosa_load.return_value = (y, 22050)
+    quality = get_audio_quality(str(dummy_wav_file))
+    assert quality['stille'] == True
+    assert "Stille erkannt" in quality['error']
 
 @patch('whisper.load_model')
 def test_transcribe_segment(mock_load_model, dummy_wav_file):
