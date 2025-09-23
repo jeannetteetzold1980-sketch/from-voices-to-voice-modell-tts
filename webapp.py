@@ -1,3 +1,4 @@
+from flask import send_from_directory
 
 from flask import Flask, request, redirect, url_for
 import os
@@ -21,6 +22,10 @@ def allowed_file(filename):
 def upload_files():
     if request.method == 'POST':
         files = request.files.getlist('files')
+# Download-Route für Ergebnisdateien
+@app.route('/results/<path:filename>')
+def download_file(filename):
+    return send_from_directory(app.config['RESULT_FOLDER'], filename, as_attachment=True)
         saved_files = []
         for file in files:
             if file and allowed_file(file.filename):
